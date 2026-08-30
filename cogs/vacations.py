@@ -12,7 +12,7 @@ VACATION_RETURN_NOTIFIED = set()
 
 
 def _data_path():
-    return os.path.join(os.getcwd(), config.VACATION_FILE)
+    return config.VACATION_FILE
 
 
 def load_vacations():

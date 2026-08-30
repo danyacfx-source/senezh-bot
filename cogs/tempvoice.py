@@ -3,19 +3,17 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
+import config
+
 TRIGGER_CHANNEL_ID = 1543552319663374376
 NEW_CHANNEL_NAME = "Клановый"
 
-_DATA_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "tempvoice_owners.json",
-)
+_DATA_PATH = config.TEMPVOICE_FILE
 
 temp_channel_owners: dict[int, int] = {}
 _channel_locks: dict[int, asyncio.Lock] = {}

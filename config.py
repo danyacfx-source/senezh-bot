@@ -3,6 +3,16 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
 
+_data_dir = os.environ.get("DATA_DIR", "").strip()
+DATA_DIR = _data_dir or str(BASE_DIR)
+os.makedirs(DATA_DIR, exist_ok=True)
+if _data_dir:
+    os.chdir(DATA_DIR)
+
+TICKETS_FILE = os.path.join(DATA_DIR, "tickets.json")
+TEMPVOICE_FILE = os.path.join(DATA_DIR, "tempvoice_owners.json")
+VACATION_FILE = os.path.join(DATA_DIR, "vacations.json")
+
 _env_path = BASE_DIR / ".env"
 if _env_path.exists():
     for line in _env_path.read_text(encoding="utf-8").splitlines():
@@ -12,11 +22,6 @@ if _env_path.exists():
         if "=" in line:
             key, _, value = line.partition("=")
             os.environ.setdefault(key.strip(), value.strip())
-
-DATA_DIR = os.environ.get("DATA_DIR", "")
-if DATA_DIR:
-    os.makedirs(DATA_DIR, exist_ok=True)
-    os.chdir(DATA_DIR)
 
 TOKEN = os.environ.get("DISCORD_BOT_TOKEN") or os.environ.get("DISCORD_TOKEN") or ""
 if not TOKEN:

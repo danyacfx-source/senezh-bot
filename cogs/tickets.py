@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 from datetime import datetime
 from io import BytesIO
 
@@ -11,11 +10,7 @@ from discord.ext import commands
 import config
 
 GUILD_ID = 1386368131500609546
-
-_TICKETS_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "tickets.json",
-)
+_TICKETS_PATH = config.TICKETS_FILE
 
 TICKET_TYPES = {
     "clan": {
