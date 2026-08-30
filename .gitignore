@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.pyc
+venv/
+.venv/
+tickets.json
+vacations.json
+tempvoice_owners.json
+panel_url.txt
+deploy/cloudflared.exe
+*.log

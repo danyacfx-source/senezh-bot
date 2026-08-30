@@ -1,0 +1,16 @@
+[Unit]
+Description=Senezh Discord Bot + Embed Panel
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=senezh
+Group=senezh
+WorkingDirectory=/opt/senezh-bot
+ExecStart=/opt/senezh-bot/venv/bin/python bot.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

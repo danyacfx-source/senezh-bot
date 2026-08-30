@@ -1,0 +1,6 @@
+# Замени senezh-panel.duckdns.org на свой поддомен DuckDNS
+# и убедись, что он указывает (A-запись) на IP этого сервера.
+senezh-panel.duckdns.org {
+    encode gzip
+    reverse_proxy 127.0.0.1:17890
+}
