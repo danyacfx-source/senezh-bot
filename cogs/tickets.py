@@ -8,9 +8,9 @@ from discord import app_commands
 from discord.ext import commands
 
 import config
+import database as db
 
 GUILD_ID = 1386368131500609546
-_TICKETS_PATH = config.TICKETS_FILE
 
 TICKET_TYPES = {
     "clan": {
@@ -83,22 +83,15 @@ ROLE_MAP = {
 
 
 def _load_tickets() -> dict:
-    try:
-        with open(_TICKETS_PATH, encoding="utf-8") as f:
-            data = json.load(f)
-        if isinstance(data, dict):
-            return data
-    except (OSError, ValueError):
-        pass
-    return {}
+    return db.load_tickets()
 
 
 def _save_tickets(tickets: dict):
-    try:
-        with open(_TICKETS_PATH, "w", encoding="utf-8") as f:
-            json.dump(tickets, f, ensure_ascii=False, indent=2)
-    except OSError as e:
-        logging.error("Ошибка сохранения тикетов: %s", e)
+    for ticket in tickets.values():
+        try:
+            db.save_ticket(ticket)
+        except Exception as e:
+            logging.error("Ошибка сохранения тикета: %s", e)
 
 
 async def _send_ticket_log(bot, title: str, description: str, color=discord.Color.blue()):
@@ -241,7 +234,7 @@ class TicketClosedView(discord.ui.View):
         )
 
         tickets.pop(str(interaction.channel.id), None)
-        _save_tickets(tickets)
+        db.delete_ticket(interaction.channel.id)
         await interaction.channel.delete()
 
     @discord.ui.button(

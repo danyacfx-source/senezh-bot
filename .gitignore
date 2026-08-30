@@ -6,6 +6,10 @@ venv/
 tickets.json
 vacations.json
 tempvoice_owners.json
+*.db
+*.db-shm
+*.db-wal
+*.bak
 panel_url.txt
 deploy/cloudflared.exe
 *.log

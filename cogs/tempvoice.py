@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 
 import discord
@@ -9,31 +8,21 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 import config
+import database as db
 
 TRIGGER_CHANNEL_ID = 1543552319663374376
 NEW_CHANNEL_NAME = "Клановый"
-
-_DATA_PATH = config.TEMPVOICE_FILE
 
 temp_channel_owners: dict[int, int] = {}
 _channel_locks: dict[int, asyncio.Lock] = {}
 
 
 def _load_owners():
-    try:
-        with open(_DATA_PATH, encoding="utf-8") as f:
-            data = json.load(f)
-        return {int(k): int(v) for k, v in data.items()}
-    except (OSError, ValueError, TypeError):
-        return {}
+    return db.load_tempvoice_owners()
 
 
 def _save_owners():
-    try:
-        with open(_DATA_PATH, "w", encoding="utf-8") as f:
-            json.dump(temp_channel_owners, f, ensure_ascii=False)
-    except OSError as e:
-        logging.error("Ошибка сохранения состояния темп-каналов: %s", e)
+    db.save_tempvoice_owners(temp_channel_owners)
 
 
 def _channel_lock(channel_id: int) -> asyncio.Lock:

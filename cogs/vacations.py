@@ -1,5 +1,3 @@
-import json
-import os
 from datetime import datetime, timedelta
 
 import discord
@@ -7,37 +5,30 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 import config
+import database as db
 
 VACATION_RETURN_NOTIFIED = set()
 
-
-def _data_path():
-    return config.VACATION_FILE
+PANEL_KEY = "vacation_panel"
 
 
 def load_vacations():
-    path = _data_path()
-    if not os.path.exists(path):
-        return {}
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    data.pop("__panel__", None)
-    return data
+    return db.load_vacations()
 
 
-def save_vacations(data):
-    path = _data_path()
-    if os.path.exists(path):
-        with open(path, "r", encoding="utf-8") as f:
-            raw = json.load(f)
-    else:
-        raw = {}
-    panel_info = raw.get("__panel__")
-    out = dict(data)
-    if panel_info:
-        out["__panel__"] = panel_info
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(out, f, ensure_ascii=False, indent=4)
+def save_vacations(data: dict):
+    loaded = db.load_vacations()
+    for key in loaded:
+        if key not in data:
+            db.delete_vacation(key)
+    for user_key, v in data.items():
+        if not isinstance(v, dict):
+            continue
+        db.save_vacation(
+            str(user_key),
+            v.get("user_name", ""),
+            v.get("periods", []),
+        )
 
 
 async def send_vacation_log(bot, title, description, color=discord.Color.orange()):
@@ -106,12 +97,7 @@ def build_request_panel_embed():
 
 
 async def update_vacation_panel(bot):
-    path = _data_path()
-    if not os.path.exists(path):
-        return
-    with open(path, "r", encoding="utf-8") as f:
-        raw = json.load(f)
-    panel_data = raw.get("__panel__")
+    panel_data = db.load_panel(PANEL_KEY)
     if not panel_data:
         return
     channel = bot.get_channel(panel_data.get("channel_id"))
@@ -119,8 +105,7 @@ async def update_vacation_panel(bot):
         return
     try:
         info_msg = await channel.fetch_message(panel_data.get("info_message_id"))
-        embed_data = {k: v for k, v in raw.items() if k != "__panel__"}
-        embed = build_info_panel_embed(embed_data)
+        embed = build_info_panel_embed(db.load_vacations())
         await info_msg.edit(embed=embed)
     except Exception:
         pass
@@ -393,18 +378,14 @@ class VacationCog(commands.Cog):
         request_view = RequestVacationView()
         request_msg = await channel.send(embed=request_embed, view=request_view)
 
-        path = _data_path()
-        raw = {}
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-        raw["__panel__"] = {
-            "channel_id": channel.id,
-            "info_message_id": info_msg.id,
-            "request_message_id": request_msg.id,
-        }
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(raw, f, ensure_ascii=False, indent=4)
+        db.save_panel(
+            PANEL_KEY,
+            {
+                "channel_id": channel.id,
+                "info_message_id": info_msg.id,
+                "request_message_id": request_msg.id,
+            },
+        )
 
         await interaction.response.send_message(
             f"✅ Панель отпусков отправлена в {channel.mention}.", ephemeral=True

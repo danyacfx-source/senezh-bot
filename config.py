@@ -12,6 +12,7 @@ if _data_dir:
 TICKETS_FILE = os.path.join(DATA_DIR, "tickets.json")
 TEMPVOICE_FILE = os.path.join(DATA_DIR, "tempvoice_owners.json")
 VACATION_FILE = os.path.join(DATA_DIR, "vacations.json")
+DB_FILE = os.path.join(DATA_DIR, "senezh.db")
 
 _env_path = BASE_DIR / ".env"
 if _env_path.exists():

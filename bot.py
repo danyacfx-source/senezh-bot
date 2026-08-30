@@ -5,6 +5,7 @@ import discord
 from discord.ext import commands
 
 from config import PROXY_URL, TOKEN
+import database as database
 import webpanel as webpanel
 from cogs.embeds import EmbedBuilder
 from cogs.tempvoice import TempVoice, TempChannelView
@@ -79,6 +80,7 @@ async def info(ctx: commands.Context):
 
 
 async def main():
+    database.init_db()
     async with bot:
         bot.add_view(TempChannelView())
         bot.add_view(TicketCloseView())
