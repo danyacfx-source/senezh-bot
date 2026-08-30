@@ -1,12 +1,16 @@
 import asyncio
 import logging
-from datetime import datetime
+import os
+import sqlite3
+import tempfile
+from datetime import datetime, timedelta
 
 import aiohttp
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 import config
+import database as db
 
 
 def _moscow_time(now):
@@ -24,6 +28,60 @@ def _moscow_time(now):
 class LoggingCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self._last_backup_key = None
+
+    async def cog_load(self):
+        self.daily_backup.start()
+
+    async def _run_backup(self):
+        try:
+            channel = self.bot.get_channel(config.BACKUP_CHANNEL)
+            if not channel:
+                logging.error("backup: канал не найден: %s", config.BACKUP_CHANNEL)
+                return
+
+            now = datetime.utcnow() + timedelta(hours=3)
+            name = f"senezh_backup_{now.strftime('%Y-%m-%d_%H-%M')}.db"
+
+            tmp_path = os.path.join(tempfile.gettempdir(), name)
+            src = db.get_conn()
+            dst = sqlite3.connect(tmp_path)
+            try:
+                src.backup(dst)
+            finally:
+                dst.close()
+
+            embed = discord.Embed(
+                title="💾 Ежедневный бэкап",
+                description=f"Файл: `{name}`\nРазмер: **{os.path.getsize(tmp_path)} байт**",
+                color=discord.Color.green(),
+                timestamp=discord.utils.utcnow(),
+            )
+
+            await channel.send(embed=embed, file=discord.File(tmp_path, filename=name))
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+        except Exception as e:
+            logging.error("backup error: %s", e, exc_info=True)
+
+    @tasks.loop(minutes=1)
+    async def daily_backup(self):
+        now = datetime.utcnow()
+        if now.hour != 0 or now.minute > 2:
+            return
+
+        key = f"{now.year}-{now.month}-{now.day}"
+        if self._last_backup_key == key:
+            return
+        self._last_backup_key = key
+
+        await self._run_backup()
+
+    @daily_backup.before_loop
+    async def before_daily_backup(self):
+        await self.bot.wait_until_ready()
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
