@@ -8,6 +8,7 @@ from config import PROXY_URL, TOKEN
 import database as database
 import webpanel as webpanel
 from cogs.embeds import EmbedBuilder
+from cogs.logging import LoggingCog
 from cogs.tempvoice import TempVoice, TempChannelView
 from cogs.tickets import (
     TicketCog,
@@ -87,6 +88,7 @@ async def main():
         bot.add_view(TicketClosedView())
         bot.add_view(RequestVacationView())
         await bot.add_cog(EmbedBuilder(bot))
+        await bot.add_cog(LoggingCog(bot))
         await bot.add_cog(TempVoice(bot))
         await bot.add_cog(TicketCog(bot))
         await bot.add_cog(VacationCog(bot))
