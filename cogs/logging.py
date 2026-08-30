@@ -111,6 +111,337 @@ class LoggingCog(commands.Cog):
             logging.error("on_member_remove error: %s", e)
 
     @commands.Cog.listener()
+    async def on_member_update(self, before: discord.Member, after: discord.Member):
+        try:
+            if before.guild is None:
+                return
+
+            guild = before.guild
+
+            old_roles = set(r.id for r in before.roles)
+            new_roles = set(r.id for r in after.roles)
+            added_roles = new_roles - old_roles
+            removed_roles = old_roles - new_roles
+
+            if not added_roles and not removed_roles:
+                return
+
+            role_channel = guild.get_channel(config.ROLE_LOG_CHANNEL)
+            if not role_channel:
+                return
+
+            now = discord.utils.utcnow()
+            time_display = _moscow_time(now)
+
+            moderator = None
+            try:
+                async for entry in guild.audit_logs(limit=10, action=discord.AuditLogAction.member_role_update):
+                    if entry.target and entry.target.id == after.id:
+                        moderator = entry.user
+                        break
+            except discord.Forbidden:
+                pass
+
+            embed = discord.Embed(
+                title=f"Роли участника {after.display_name} (@{after.name}) были изменены",
+                color=discord.Color.blurple(),
+                timestamp=now,
+            )
+
+            if added_roles:
+                role_names = [f"<@&{rid}>" for rid in added_roles]
+                embed.add_field(name="➕ Добавлены роли", value=", ".join(role_names), inline=False)
+
+            if removed_roles:
+                role_names = [f"<@&{rid}>" for rid in removed_roles]
+                embed.add_field(name="➖ Удалены роли", value=", ".join(role_names), inline=False)
+
+            embed.add_field(
+                name="Кто изменил",
+                value=f"{moderator.mention} {moderator}" if moderator else "Неизвестно",
+                inline=True,
+            )
+
+            embed.set_thumbnail(url=after.display_avatar.url)
+            embed.set_footer(text=f"id участника: {after.id}·{time_display}")
+
+            await role_channel.send(embed=embed)
+        except Exception as e:
+            logging.error("on_member_update error: %s", e)
+
+    @commands.Cog.listener()
+    async def on_guild_role_create(self, role: discord.Role):
+        try:
+            guild = role.guild
+            channel = guild.get_channel(config.ROLE_LOG_CHANNEL)
+            if not channel:
+                return
+
+            embed = discord.Embed(
+                title="🔵 Роль создана",
+                description=f"{role.mention} ({role.name})",
+                color=discord.Color.blue(),
+                timestamp=discord.utils.utcnow(),
+            )
+            embed.add_field(name="ID", value=str(role.id), inline=True)
+            embed.add_field(name="Цвет", value=str(role.color), inline=True)
+            embed.add_field(name="Отображаемая отдельно", value="Да" if role.hoist else "Нет", inline=True)
+
+            await channel.send(embed=embed)
+        except Exception as e:
+            logging.error("on_guild_role_create error: %s", e)
+
+    @commands.Cog.listener()
+    async def on_guild_role_delete(self, role: discord.Role):
+        try:
+            guild = role.guild
+            channel = guild.get_channel(config.ROLE_LOG_CHANNEL)
+            if not channel:
+                return
+
+            embed = discord.Embed(
+                title="⚫ Роль удалена",
+                description=f"**{role.name}**",
+                color=discord.Color.dark_grey(),
+                timestamp=discord.utils.utcnow(),
+            )
+            embed.add_field(name="ID", value=str(role.id), inline=True)
+            embed.add_field(name="Цвет", value=str(role.color), inline=True)
+            embed.add_field(name="Участников с ролью", value=str(len(role.members)), inline=True)
+
+            await channel.send(embed=embed)
+        except Exception as e:
+            logging.error("on_guild_role_delete error: %s", e)
+
+    @commands.Cog.listener()
+    async def on_guild_role_update(self, before: discord.Role, after: discord.Role):
+        try:
+            guild = after.guild
+            channel = guild.get_channel(config.ROLE_LOG_CHANNEL)
+            if not channel:
+                return
+
+            changes = []
+            if before.name != after.name:
+                changes.append(f"**Имя роли изменено:** `{before.name}` → `{after.name}`")
+            if before.color != after.color:
+                changes.append(f"**Цвет изменён:** `{before.color}` → `{after.color}`")
+            if before.hoist != after.hoist:
+                val = "Да" if after.hoist else "Нет"
+                changes.append(f"**Отображаемая отдельно:** {val}")
+            if before.mentionable != after.mentionable:
+                val = "Да" if after.mentionable else "Нет"
+                changes.append(f"**Упоминаемая:** {val}")
+
+            if not changes:
+                return
+
+            now = discord.utils.utcnow()
+            time_display = _moscow_time(now)
+
+            moderator = None
+            try:
+                async for entry in guild.audit_logs(limit=5, action=discord.AuditLogAction.role_update):
+                    if entry.target and entry.target.id == after.id:
+                        moderator = entry.user
+                        break
+            except discord.Forbidden:
+                pass
+
+            embed = discord.Embed(
+                title=f"Роль {after.mention} была изменена",
+                description="\n".join(changes),
+                color=discord.Color.purple(),
+                timestamp=now,
+            )
+            embed.add_field(
+                name="Кто изменил",
+                value=f"{moderator.mention} {moderator}" if moderator else "Неизвестно",
+                inline=True,
+            )
+            if moderator:
+                embed.set_footer(text=f"id участника: {moderator.id}·{time_display}")
+            else:
+                embed.set_footer(text=time_display)
+
+            await channel.send(embed=embed)
+        except Exception as e:
+            logging.error("on_guild_role_update error: %s", e)
+
+    @commands.Cog.listener()
+    async def on_guild_channel_create(self, channel):
+        try:
+            guild = channel.guild
+            log_channel = guild.get_channel(config.CHANNEL_LOG_CHANNEL)
+            if not log_channel:
+                return
+
+            now = discord.utils.utcnow()
+            time_display = _moscow_time(now)
+
+            moderator = None
+            try:
+                async for entry in guild.audit_logs(limit=5, action=discord.AuditLogAction.channel_create):
+                    if entry.target and entry.target.id == channel.id:
+                        moderator = entry.user
+                        break
+            except discord.Forbidden:
+                pass
+
+            channel_type = (
+                "text"
+                if isinstance(channel, discord.TextChannel)
+                else "voice"
+                if isinstance(channel, discord.VoiceChannel)
+                else "category"
+                if isinstance(channel, discord.CategoryChannel)
+                else "announcement"
+                if isinstance(channel, discord.ForumChannel)
+                else str(channel.type)
+            )
+
+            embed = discord.Embed(
+                title=f"Канал {channel.name} ({channel.id}) был создан",
+                color=discord.Color.green(),
+                timestamp=now,
+            )
+            embed.add_field(
+                name="Кто создал",
+                value=f"{moderator.mention} {moderator}" if moderator else "Неизвестно",
+                inline=True,
+            )
+            embed.add_field(name="Тип канала", value=channel_type, inline=True)
+
+            if moderator:
+                embed.set_footer(text=f"ID модератора: {moderator.id}·{time_display}")
+            else:
+                embed.set_footer(text=time_display)
+
+            await log_channel.send(embed=embed)
+        except Exception as e:
+            logging.error("on_guild_channel_create error: %s", e)
+
+    @commands.Cog.listener()
+    async def on_guild_channel_delete(self, channel):
+        try:
+            guild = channel.guild
+            log_channel = guild.get_channel(config.CHANNEL_LOG_CHANNEL)
+            if not log_channel:
+                return
+
+            now = discord.utils.utcnow()
+            time_display = _moscow_time(now)
+
+            moderator = None
+            try:
+                async for entry in guild.audit_logs(limit=5, action=discord.AuditLogAction.channel_delete):
+                    if entry.target and entry.target.id == channel.id:
+                        moderator = entry.user
+                        break
+            except discord.Forbidden:
+                pass
+
+            channel_type = (
+                "text"
+                if isinstance(channel, discord.TextChannel)
+                else "voice"
+                if isinstance(channel, discord.VoiceChannel)
+                else "category"
+                if isinstance(channel, discord.CategoryChannel)
+                else "announcement"
+                if isinstance(channel, discord.ForumChannel)
+                else str(channel.type)
+            )
+
+            embed = discord.Embed(
+                title=f"Канал {channel.name} ({channel.id}) был удалён",
+                color=discord.Color.red(),
+                timestamp=now,
+            )
+            embed.add_field(
+                name="Кто удалил",
+                value=f"{moderator.mention} {moderator}" if moderator else "Неизвестно",
+                inline=True,
+            )
+            embed.add_field(name="Тип канала", value=channel_type, inline=True)
+
+            if moderator:
+                embed.set_footer(text=f"ID модератора: {moderator.id}·{time_display}")
+            else:
+                embed.set_footer(text=time_display)
+
+            await log_channel.send(embed=embed)
+        except Exception as e:
+            logging.error("on_guild_channel_delete error: %s", e)
+
+    @commands.Cog.listener()
+    async def on_guild_channel_update(self, before, after):
+        try:
+            guild = after.guild
+            log_channel = guild.get_channel(config.CHANNEL_LOG_CHANNEL)
+            if not log_channel:
+                return
+
+            now = discord.utils.utcnow()
+            time_display = _moscow_time(now)
+
+            moderator = None
+            try:
+                async for entry in guild.audit_logs(limit=5, action=discord.AuditLogAction.channel_update):
+                    if entry.target and entry.target.id == after.id:
+                        moderator = entry.user
+                        break
+            except discord.Forbidden:
+                pass
+
+            changes = []
+            if before.name != after.name:
+                changes.append(f"**Название:** `{before.name}` → `{after.name}`")
+            if before.category != after.category:
+                old_cat = before.category.name if before.category else "Нет"
+                new_cat = after.category.name if after.category else "Нет"
+                changes.append(f"**Категория:** `{old_cat}` → `{new_cat}`")
+            if hasattr(before, "topic") and before.topic != after.topic:
+                old_topic = before.topic or "Нет"
+                new_topic = after.topic or "Нет"
+                changes.append(f"**Топик:** `{old_topic[:50]}` → `{new_topic[:50]}`")
+            if hasattr(before, "nsfw") and before.nsfw != after.nsfw:
+                changes.append(f"**NSFW:** `{before.nsfw}` → `{after.nsfw}`")
+            if hasattr(before, "slowmode_delay") and before.slowmode_delay != after.slowmode_delay:
+                changes.append(
+                    f"**Слоумод:** `{before.slowmode_delay}с` → `{after.slowmode_delay}с`"
+                )
+            if hasattr(before, "overwrites") and dict(before.overwrites) != dict(after.overwrites):
+                changes.append("**Разрешения изменены**")
+
+            if before.name != after.name and isinstance(after, discord.VoiceChannel):
+                changes.append(f"**Войс-канал переименован:** `{before.name}` → `{after.name}`")
+
+            if not changes:
+                return
+
+            embed = discord.Embed(
+                title=f"Канал {after.name} ({after.id}) был обновлён",
+                color=discord.Color.gold(),
+                timestamp=now,
+            )
+            embed.add_field(
+                name="Кто обновил",
+                value=f"{moderator.mention} {moderator}" if moderator else "Неизвестно",
+                inline=True,
+            )
+            embed.add_field(name="Изменения", value="\n".join(changes), inline=False)
+
+            if moderator:
+                embed.set_footer(text=f"ID модератора: {moderator.id}·{time_display}")
+            else:
+                embed.set_footer(text=time_display)
+
+            await log_channel.send(embed=embed)
+        except Exception as e:
+            logging.error("on_guild_channel_update error: %s", e)
+
+    @commands.Cog.listener()
     async def on_voice_state_update(
         self,
         member: discord.Member,
