@@ -7,6 +7,8 @@ from discord.ext import commands, tasks
 import config
 import database as db
 
+GUILD_ID = 1386368131500609546
+
 VACATION_RETURN_NOTIFIED = set()
 
 PANEL_KEY = "vacation_panel"
@@ -361,6 +363,7 @@ class VacationCog(commands.Cog):
         name="vacation_panel",
         description="Отправить панель отпусков",
     )
+    @app_commands.guilds(discord.Object(id=GUILD_ID))
     @app_commands.default_permissions(administrator=True)
     async def vacation_panel(self, interaction: discord.Interaction):
         channel = interaction.guild.get_channel(config.VACATION_PANEL_CHANNEL)
@@ -395,6 +398,7 @@ class VacationCog(commands.Cog):
         name="vacation_list",
         description="Показать все отпуска",
     )
+    @app_commands.guilds(discord.Object(id=GUILD_ID))
     @app_commands.default_permissions(administrator=True)
     async def vacation_list(self, interaction: discord.Interaction):
         vacations = load_vacations()
@@ -429,6 +433,7 @@ class VacationCog(commands.Cog):
         name="vacation_remove",
         description="Снять отпуск у участника",
     )
+    @app_commands.guilds(discord.Object(id=GUILD_ID))
     @app_commands.default_permissions(administrator=True)
     @app_commands.describe(user="Участник, у которого снять отпуск")
     async def vacation_remove(self, interaction: discord.Interaction, user: discord.Member):
