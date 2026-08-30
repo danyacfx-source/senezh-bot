@@ -31,7 +31,7 @@ if not TOKEN:
 PROXY_URL = os.environ.get("DISCORD_PROXY", "")
 
 # Web panel (embed-constructor)
-PANEL_HOST = os.environ.get("PANEL_HOST", "127.0.0.1")
+PANEL_HOST = os.environ.get("PANEL_HOST", "0.0.0.0")
 PANEL_PORT = int(os.environ.get("PORT") or os.environ.get("PANEL_PORT") or "17890")
 PANEL_PASSWORD = os.environ.get("PANEL_PASSWORD", "").strip()
 PANEL_PUBLIC_URL = os.environ.get("PANEL_PUBLIC_URL", "").strip().rstrip("/")
