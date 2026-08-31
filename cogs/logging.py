@@ -25,10 +25,29 @@ def _moscow_time(now):
     return time_display
 
 
+BACKUP_STATE_FILE = os.path.join(config.DATA_DIR, "last_backup_date.txt")
+
+
+def _load_backup_state():
+    try:
+        with open(BACKUP_STATE_FILE, "r", encoding="utf-8") as f:
+            return f.read().strip() or None
+    except OSError:
+        return None
+
+
+def _save_backup_state(key):
+    try:
+        with open(BACKUP_STATE_FILE, "w", encoding="utf-8") as f:
+            f.write(key)
+    except OSError as e:
+        logging.error("backup: не удалось сохранить состояние: %s", e)
+
+
 class LoggingCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self._last_backup_key = None
+        self._last_backup_key = _load_backup_state()
 
     async def cog_load(self):
         self.daily_backup.start()
@@ -78,6 +97,7 @@ class LoggingCog(commands.Cog):
         self._last_backup_key = key
 
         await self._run_backup()
+        _save_backup_state(key)
 
     @daily_backup.before_loop
     async def before_daily_backup(self):
