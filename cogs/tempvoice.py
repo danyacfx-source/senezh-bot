@@ -306,22 +306,6 @@ class TempVoice(commands.Cog):
                 temp_channel_owners[vc.id] = new_owner.id
                 _save_owners()
                 logging.info("Владелец канала %s теперь %s", vc.name, new_owner)
-                embed = discord.Embed(
-                    title="👑 Права канала переданы",
-                    description=(
-                        f"Предыдущий владелец **{member.display_name}** покинул канал.\n"
-                        f"Новый владелец: **{new_owner.mention}**"
-                    ),
-                    color=discord.Color.gold(),
-                )
-                try:
-                    dest = member.guild.system_channel
-                    if dest is not None:
-                        await dest.send(embed=embed)
-                except discord.NotFound:
-                    pass
-                except Exception as e:
-                    logging.error("Ошибка уведомления о передаче прав: %s", e)
 
     @app_commands.command(name="temp_panel", description="Отправить панель управления клановым войсом")
     @app_commands.guilds(discord.Object(id=TEMP_GUILD_ID))
